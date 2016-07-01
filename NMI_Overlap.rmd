@@ -1,0 +1,133 @@
+---
+title: "Transcriptomics"
+author: "Richard"
+date: "27 April 2016"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+# clear the workspace
+rm(list =ls()) 
+# load libraries
+library('entropy')
+library('ggplot2')
+library('gdata')
+library('stats')
+library(knitr)
+# load code
+opts_chunk$set(echo = FALSE, cache=TRUE)
+source('~/Dropbox/PhD/Study_17_Transcriptomics/Scripts/run_NMI.R')
+```
+
+```{r data, include=FALSE}
+# set working directory
+setwd("~/Dropbox/PhD/Study_17_Transcriptomics/MetaXcan results")
+
+## load relevant data
+DataSQ <- read.csv('sqcortex.csv')
+DataASD <- read.csv('autismcortex2.csv')
+DataColl <- read.csv('collegecortex.csv')
+```
+
+
+```{r}
+## merge into one big data frame
+DataTotal <- merge(DataASD, DataSQ, by="gene_name", suffixes = c(".ASD",".SQ"))
+DataTotal <- merge(DataTotal, DataColl, by="gene_name") # just remember that College has no suffix
+
+## omit all rows containing NA's
+DataTotal <- DataTotal[!is.na(DataTotal$pvalue.ASD), ]
+DataTotal <- DataTotal[!is.na(DataTotal$pvalue.SQ), ]
+DataTotal <- DataTotal[!is.na(DataTotal$pvalue), ]
+```
+
+## Mutual Information
+Compute the mutual information and entropy a.k.a. the overlap between two gene sets
+https://en.wikipedia.org/wiki/Mutual_information
+
+Using Scott's rule to determine the number of
+bins in continuous data: 
+https://en.wikipedia.org/wiki/Histogram
+```{r}
+Autism_Coll <- run_NMI(DataTotal$pvalue.ASD,DataTotal$pvalue)
+print('Mutual information between autism and college')
+print(Autism_Coll)
+Autism_SQ <- run_NMI(DataTotal$pvalue.ASD,DataTotal$pvalue.SQ)
+print("Mutual information between autism and SQ")
+print(Autism_SQ)
+Coll_SQ <- run_NMI(DataTotal$pvalue,DataTotal$pvalue.SQ)
+print("Mutual information between college and SQ")
+print(Coll_SQ)
+```
+
+## Create a 3-way contingency table and run mantelhaens test on that
+```{r}
+# three factors autism, sq & college
+yyy <- subset(DataTotal, pvalue.ASD<0.05)
+yyy <- subset(yyy, yyy$pvalue.SQ<0.05)
+yyy <- subset(yyy, yyy$pvalue<0.05)
+yyy <- nrow(yyy)
+print('Autism, sq and college')
+print(yyy)
+
+yyn <- subset(DataTotal, pvalue.ASD<0.05)
+yyn <- subset(yyn, yyn$pvalue.SQ<0.05)
+yyn <- subset(yyn, yyn$pvalue>0.05)
+yyn <- nrow(yyn)
+print('Autism and sq and not college')
+print(yyn)
+
+yny <- subset(DataTotal, pvalue.ASD<0.05)
+yny <- subset(yny, yny$pvalue.SQ>0.05)
+yny <- subset(yny, yny$pvalue<0.05)
+yny <- nrow(yny)
+print('Autism and college not sq')
+print(yny)
+
+ynn <- subset(DataTotal, pvalue.ASD<0.05)
+ynn <- subset(ynn, ynn$pvalue.SQ>0.05)
+ynn <- subset(ynn, ynn$pvalue>0.05)
+ynn <- nrow(ynn)
+print('Autism, not college not sq')
+print(ynn)
+
+nyy <- subset(DataTotal, pvalue.ASD>0.05)
+nyy <- subset(nyy, nyy$pvalue.SQ<0.05)
+nyy <- subset(nyy, nyy$pvalue<0.05)
+nyy <- nrow(nyy)
+print('College and sq, not autism')
+print(nyy)
+
+nyn <- subset(DataTotal, pvalue.SQ<0.05)
+nyn <- subset(nyn, nyn$pvalue.ASD>0.05)
+nyn <- subset(nyn, nyn$pvalue>0.05)
+nyn <- nrow(nyn)
+print('Sq, not autism and not college')
+print(nyn)
+
+nny <- subset(DataTotal, pvalue.ASD>0.05)
+nny <- subset(nny, nny$pvalue.SQ>0.05)
+nny <- subset(nny, nny$pvalue<0.05)
+nny <- nrow(nny)
+print('College, not autism and not sq')
+print(nny)
+
+nnn <- subset(DataTotal, pvalue.ASD>0.05)
+nnn <- subset(nnn, nnn$pvalue.SQ>0.05)
+nnn <- subset(nnn, nnn$pvalue>0.05)
+nnn <- nrow(nnn)
+print('Not college, not autism and not sq')
+print(nnn)
+
+### Prepare a 3 way contingency table:
+mytable <- array(c(yyy,yyn,yny,ynn,
+                    nyy,nyn,nny,nnn),
+                  dim = c(2,2,2),
+                  dimnames = list(
+                    Autism = c('Yes','No'),
+                    Systemizing = c('Yes','No'),
+                    College = c('Yes','No')))
+## test
+print(mytable)
+mantelhaen.test(mytable, exact = TRUE, alternative = "greater")
+```
