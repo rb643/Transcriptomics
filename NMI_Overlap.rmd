@@ -131,3 +131,11 @@ mytable <- array(c(yyy,yyn,yny,ynn,
 print(mytable)
 mantelhaen.test(mytable, exact = TRUE, alternative = "greater")
 ```
+
+## Draw a Venn-Diagram on this contingency table
+```{r}
+grid.newpage()
+draw.triple.venn(area1 = nrow(subset(DataTotal, pvalue.ASD<0.05)), area2 = nrow(subset(DataTotal, pvalue.SQ<0.05)), area3 = nrow(subset(DataTotal, pvalue<0.05)), n12 = yyn, n23 = nyy, n13 = yny, 
+    n123 = yyy, category = c("Autism", "Systemizing", "Educational Attainment"), lty = "blank", 
+    fill = c("firebrick1", "dodgerblue1", "green1"))
+```
